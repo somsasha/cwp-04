@@ -1,4 +1,6 @@
 const net = require('net');
+const fs = require("fs");
+const crypto = require('crypto');
 const port = 8124;
 let seed = 0;
 
@@ -17,6 +19,7 @@ const server = net.createServer((client) => {
         client.setEncoding('utf8');
         var userAuthorized = false;
         var FileUserAuthorized = false;
+        var RemoteUserAuthorized = false;
         var answersArray = [];
         let filepath = "";
         let savedir = "";
@@ -55,6 +58,32 @@ const server = net.createServer((client) => {
                 fs.mkdir(savedir + client.id, function (err) {
                     if (err) throw err;
                 });
+                client.write("ACK");
+            }
+            else if (RemoteUserAuthorized) {
+                console.log(data);
+                let client_command = data.split(' ');
+                if(client_command[0]==="COPY")
+                {
+                    console.log('COPY');
+                    fs.createReadStream(client_command[1]).pipe(fs.createWriteStream(client_command[2]));
+                }
+                else if(client_command[0]==="ENCODE")
+                {
+                    console.log('ENCODE');
+                    const cipher = crypto.createCipher('aes192', client_command[3]);
+                    fs.createReadStream(client_command[1]).pipe(cipher).pipe(fs.createWriteStream(client_command[2]));
+                }
+                else if(client_command[0]==="DECODE")
+                {
+                    console.log('DECODE');
+                    const decipher = crypto.createDecipher('aes192', client_command[3]);
+                    fs.createReadStream(client_command[1]).pipe(decipher).pipe(fs.createWriteStream(client_command[2]));
+                }
+                client.destroy();
+            }
+            else if(data === "REMOTE"){
+                RemoteUserAuthorized = true;
                 client.write("ACK");
             }
             else if (data === "QA") {
